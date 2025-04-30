@@ -8,6 +8,8 @@ class MBMLData:
         with open(self.data_path, "r") as f:
             self.data = json.load(f)
 
+        self._add_tickSeconds()
+
     def _get_round(self, round_number: int):
         assert round_number > 0, "Round number must be greater than 0"
         if round_number > len(self.data["gameRounds"]):
@@ -20,10 +22,10 @@ class MBMLData:
         return ticks / tick_rate
 
     def _get_kills_second(self, round_number: int):
-        start_tick_of_round = data._get_round(round_number)["freezeTimeEndTick"]
+        start_tick_of_round = self._get_round(round_number)["freezeTimeEndTick"]
 
         kill_dict = {}
-        for kills in data._get_kills_by_round(round_number):
+        for kills in self._get_kills_by_round(round_number):
             kill_dict[kills["tick"]] = {
                 "time_in_seconds": self._convert_ticks_to_seconds(kills["tick"] - start_tick_of_round),
                 "killer": kills["attackerName"],
@@ -43,6 +45,11 @@ class MBMLData:
                 t = True
         return t
 
+    def _add_tickseconds(self):
+        for round in self.data["gameRounds"]:
+            for kills in round["kills"]:
+                kills["tickSeconds"] = self._convert_ticks_to_seconds(kills["tick"])
+
     def __len__(self):
         return len(self.data["gameRounds"])
 
@@ -51,7 +58,6 @@ class MBMLData:
 
 
 if __name__ == "__main__":
-    data = MBMLData("data/0013db25-4444-452b-980b-7702dc6fb810.json")
-    data._get_kills_second(round_number=1)
-    round = data._get_round(1)
+    data = MBMLData("data/raw/0013db25-4444-452b-980b-7702dc6fb810.json")
+
     print(data)
