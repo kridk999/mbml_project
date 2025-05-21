@@ -1,3 +1,4 @@
+import lzma
 import json
 
 
@@ -5,10 +6,10 @@ class MBMLData:
     def __init__(self, data_path: str = None):
         self.data_path = data_path
 
-        with open(self.data_path, "r") as f:
+        with lzma.open(self.data_path, "rt", encoding='utf-8') as f:
             self.data = json.load(f)
 
-        self._add_tickSeconds()
+        self._add_tickseconds()
 
     def _get_round(self, round_number: int):
         assert round_number > 0, "Round number must be greater than 0"
@@ -58,6 +59,6 @@ class MBMLData:
 
 
 if __name__ == "__main__":
-    data = MBMLData("data/raw/0013db25-4444-452b-980b-7702dc6fb810.json")
+    data = MBMLData("data/lan/0013db25-4444-452b-980b-7702dc6fb810.json.xz")
 
     print(data)
