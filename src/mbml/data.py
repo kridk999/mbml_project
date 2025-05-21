@@ -51,6 +51,11 @@ class MBMLData:
             for kills in round["kills"]:
                 kills["tickSeconds"] = self._convert_ticks_to_seconds(kills["tick"] - round["freezeTimeEndTick"])
 
+    def _get_buys(self, round_number: int):
+        round_data = self._get_round(round_number)
+        buys = {"tTeam": round_data["tRoundSpendMoney"], "ctTeam": round_data["ctRoundSpendMoney"]}
+        return buys
+
     def __len__(self):
         return len(self.data["gameRounds"])
 
