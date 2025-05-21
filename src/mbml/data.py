@@ -1,12 +1,12 @@
-import lzma
 import json
+import lzma
 
 
 class MBMLData:
     def __init__(self, data_path: str = None):
         self.data_path = data_path
 
-        with lzma.open(self.data_path, "rt", encoding='utf-8') as f:
+        with lzma.open(self.data_path, "rt", encoding="utf-8") as f:
             self.data = json.load(f)
 
         self._add_tickseconds()
@@ -49,7 +49,7 @@ class MBMLData:
     def _add_tickseconds(self):
         for round in self.data["gameRounds"]:
             for kills in round["kills"]:
-                kills["tickSeconds"] = self._convert_ticks_to_seconds(kills["tick"])
+                kills["tickSeconds"] = self._convert_ticks_to_seconds(kills["tick"] - round["freezeTimeEndTick"])
 
     def __len__(self):
         return len(self.data["gameRounds"])
