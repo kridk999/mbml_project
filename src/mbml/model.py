@@ -1,57 +1,53 @@
-import matplotlib.pyplot as plt
-import pandas as pd
-from lifelines import KaplanMeierFitter
-
-from mbml.data import MBMLData
-
-data = MBMLData(data_path="data/raw/0013db25-4444-452b-980b-7702dc6fb810.json")
-
-events = data._get_kills_by_round(15)
-
-df = pd.DataFrame(events)
-
-# Get all unique player names
-all_players = pd.unique(df[["attackerName", "victimName"]].values.ravel())
-
-# Build player records
-survival_records = []
-
-# Max round time (or just take max seen in data)
-max_time = df["seconds"].max()
-
-for player in all_players:
-    # Get player death, if any
-    death_event = df[df["victimName"] == player]
-
-    if not death_event.empty:
-        # Player died: use first death time
-        time = death_event["seconds"].min()
-        event = 1
-        team = death_event.iloc[0]["victimTeam"]
-    else:
-        # Player survived
-        time = max_time
-        event = 0
-        # Guess team from attacker side
-        attacker_rows = df[df["attackerName"] == player]
-        team = attacker_rows.iloc[0]["attackerTeam"] if not attacker_rows.empty else "Unknown"
-
-    survival_records.append({"player": player, "duration": time, "event": event, "team": team})
-
-survival_df = pd.DataFrame(survival_records)
+import torch
+import torch.nn as nn
 
 
-kmf = KaplanMeierFitter()
+class LSTMWinPredictor(nn.Module):
+    def __init__(self, input_dim, hidden_dim, num_layers, dropout=0.0):
+        """
+        Args:
+            input_dim (int): Number of input features per round.
+            hidden_dim (int): LSTM hidden state size.
+            num_layers (int): Number of LSTM layers.
+            dropout (float): Dropout probability (only applies if num_layers > 1).
+        """
+        super().__init__()
+        self.lstm = nn.LSTM(
+            input_size=input_dim,
+            hidden_size=hidden_dim,
+            num_layers=num_layers,
+            batch_first=True,
+            dropout=dropout if num_layers > 1 else 0.0,
+        )
+        # Fully connected layer to output a scalar for each round.
+        self.fc = nn.Linear(hidden_dim, 1)
+        self.sigmoid = nn.Sigmoid()
 
-plt.figure(figsize=(10, 6))
+    def forward(self, x):
+        """
+        Forward pass.
 
-for team in survival_df["team"].unique():
-    mask = survival_df["team"] == team
-    kmf.fit(durations=survival_df[mask]["duration"], event_observed=survival_df[mask]["event"], label=team)
-    kmf.plot_survival_function()
+        Args:
+            x (torch.Tensor): Input tensor of shape (batch_size, round_length, input_dim)
 
-plt.title("Survival Curves per Team")
-plt.xlabel("Time (seconds)")
-plt.ylabel("Probability of Survival")
-plt.grid(True)
-plt.show()
+        Returns:
+            torch.Tensor: Output probability vector of shape (batch_size, round_length)
+        """
+        lstm_out, _ = self.lstm(x)  # lstm_out: (batch_size, round_length, hidden_dim)
+        logits = self.fc(lstm_out).squeeze(-1)  # logits: (batch_size, round_length)
+        probs = self.sigmoid(logits)  # probs: (batch_size, round_length)
+        return probs
+
+
+# Example usage:
+if __name__ == "__main__":
+    # Dummy data: a batch of 2 matches, each with 10 rounds and 5 features per round.
+    batch_size = 2
+    round_length = 10
+    input_dim = 5
+    dummy_input = torch.randn(batch_size, round_length, input_dim)
+
+    model = LSTMWinPredictor(input_dim=input_dim, hidden_dim=32, num_layers=2, dropout=0.2)
+    output_probs = model(dummy_input)
+    print("Output shape:", output_probs.shape)  # Expected shape: (2, 10)
+    print("Output probabilities:", output_probs)
