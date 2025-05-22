@@ -224,6 +224,7 @@ def create_dataloaders(
     test_ratio: float = 0.1,
     random_seed: int = 42,
     num_workers: int = 4,
+    chronological: bool = False,  # New parameter to control chronological splitting
     **dataset_kwargs,
 ) -> Tuple[DataLoader, DataLoader, DataLoader]:
     """
@@ -237,6 +238,7 @@ def create_dataloaders(
         test_ratio: Ratio of data to use for testing
         random_seed: Random seed for reproducibility
         num_workers: Number of workers for DataLoader
+        chronological: If True, splits data chronologically to avoid look-ahead bias
         **dataset_kwargs: Additional arguments for CSGORoundDataset
 
     Returns:
@@ -258,16 +260,33 @@ def create_dataloaders(
     val_size = int(dataset_size * val_ratio)
     test_size = dataset_size - train_size - val_size
 
-    # Split the dataset
-    train_dataset, val_dataset, test_dataset = torch.utils.data.random_split(dataset, [train_size, val_size, test_size])
+    if chronological:
+        # For chronological splitting, we assume the rounds are already in chronological order
+        # or we need to sort them based on match time (if available)
+        indices = list(range(dataset_size))
 
-    print(f"Dataset split: {train_size} train, {val_size} val, {test_size} test")
+        # Split indices chronologically
+        train_indices = indices[:train_size]
+        val_indices = indices[train_size : train_size + val_size]
+        test_indices = indices[train_size + val_size :]
+
+        train_dataset = torch.utils.data.Subset(dataset, train_indices)
+        val_dataset = torch.utils.data.Subset(dataset, val_indices)
+        test_dataset = torch.utils.data.Subset(dataset, test_indices)
+
+        print(f"Dataset split chronologically: {train_size} train, {val_size} val, {test_size} test")
+    else:
+        # Random split (original behavior)
+        train_dataset, val_dataset, test_dataset = torch.utils.data.random_split(
+            dataset, [train_size, val_size, test_size]
+        )
+        print(f"Dataset split randomly: {train_size} train, {val_size} val, {test_size} test")
 
     # Create DataLoaders
     train_loader = DataLoader(
         train_dataset,
         batch_size=batch_size,
-        shuffle=True,
+        shuffle=not chronological,  # Only shuffle if not using chronological order
         num_workers=num_workers,
         collate_fn=collate_variable_length_rounds,
         pin_memory=torch.cuda.is_available(),
@@ -304,11 +323,12 @@ if __name__ == "__main__":
     print(f"Sample data columns: {df.columns.tolist()}")
     print(f"Sample data shape: {df.shape}")
 
-    # Create dataloaders
+    # Create dataloaders with chronological splitting to avoid look-ahead bias
     train_loader, val_loader, test_loader = create_dataloaders(
         csv_path=csv_path,
         batch_size=32,
         preload=True,  # Set to False for very large datasets
+        chronological=True,  # Enable chronological splitting
     )
 
     # Test a batch

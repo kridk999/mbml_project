@@ -191,7 +191,7 @@ def train_model(
 
     # Create dataloaders
     train_loader, val_loader, test_loader = create_dataloaders(
-        csv_path=csv_path, batch_size=batch_size, feature_cols=feature_cols
+        csv_path=csv_path, batch_size=batch_size, feature_cols=feature_cols, chronological=True
     )
 
     # Get input dimension from data if not provided
