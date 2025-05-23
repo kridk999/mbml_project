@@ -1,3 +1,7 @@
+"""
+CSGO Win Prediction model that predicts if the T side will win a round.
+Label 1 = T side wins, Label 0 = CT side wins (consistent across all matches).
+"""
 import argparse
 import json
 import os
@@ -98,7 +102,7 @@ def process_features(dataframe, feature_cols=None):
     player_count_indices = [feature_cols.index(col) for col in player_count_cols]
 
     # Find equipment value features
-    equipment_cols = [col for col in feature_cols if "eqVal" in col]
+    equipment_cols = [col for col in feature_cols if "eqval" in col.lower()]
     equipment_indices = [feature_cols.index(col) for col in equipment_cols]
 
     print(f"Found {len(player_count_indices)} player count features: {player_count_cols}")
@@ -336,7 +340,7 @@ def analyze_event_responsiveness(predictions_dict, player_count_indices, equipme
     }
 
 
-def visualize_predictions(predictions_dict, output_dir, feature_cols, player_count_indices, max_viz=20):
+def visualize_predictions(predictions_dict, output_dir, feature_cols, player_count_indices, equipment_indices, max_viz=20):
     """
     Create visualizations of model predictions to analyze responsiveness.
     """
@@ -376,35 +380,114 @@ def visualize_predictions(predictions_dict, output_dir, feature_cols, player_cou
         fig, axes = plt.subplots(3, 1, figsize=(12, 10), sharex=True)
 
         # Plot predictions vs ground truth
-        axes[0].plot(valid_preds, "b-", label="Predictions")
-        axes[0].axhline(y=valid_labels[0], color="r", linestyle="-", label="Ground Truth")
-        axes[0].set_ylabel("Win Probability")
+        axes[0].plot(valid_preds, "b-", label="T Win Probability")
+        axes[0].axhline(y=valid_labels[0], color="r", linestyle="-", label="Ground Truth (1=T win, 0=CT win)")
+        axes[0].set_ylabel("T Side Win Probability")
         axes[0].set_title(f"Match {match_id}, Round {round_idx}")
         axes[0].legend()
         axes[0].grid(True)
 
-        # Plot CT/T player counts
-        ct_alive_idx = player_count_indices[0]  # Assuming this is CT players alive
-        t_alive_idx = player_count_indices[1]  # Assuming this is T players alive
-
-        axes[1].plot(valid_features[:, ct_alive_idx], "b-", label="CT Players")
-        axes[1].plot(valid_features[:, t_alive_idx], "r-", label="T Players")
+        # Plot CT/T player counts - properly identify columns by name
+        ct_alive_idx = None
+        t_alive_idx = None
+        
+        # Get the column names for each player_count_index
+        player_count_cols = [feature_cols[idx] for idx in player_count_indices]
+        
+        for i, col_name in enumerate(player_count_cols):
+            if "num_ct_alive" in col_name.lower():
+                ct_alive_idx = player_count_indices[i]
+            elif "num_t_alive" in col_name.lower():
+                t_alive_idx = player_count_indices[i]
+        
+        # Always display player counts, even if one is missing
         axes[1].set_ylabel("Players Alive")
+        axes[1].set_ylim(0, 5)  # Set y-axis limits to 0-5 players (max team size in CS:GO)
+        axes[1].grid(True)  # Add grid for better visibility
+        
+        # Enhanced normalization function that handles various value ranges
+        def normalize_player_count(values, expected_max=5.0):
+            """Normalize player count values to 0-5 range"""
+            values_min = values.min()
+            values_max = values.max()
+            
+            # If values are already in valid range, return as-is
+            if values_max <= expected_max and values_min >= 0:
+                return values
+                
+            # Different normalization strategies based on the data range
+            if values_max > expected_max:
+                # Case 1: Max exceeds expected (like 0-10 instead of 0-5)
+                scale_factor = expected_max / values_max if values_max > 0 else 1.0
+                normalized = values * scale_factor
+                print(f"Normalizing player count from range {values_min:.1f}-{values_max:.1f} to 0-{expected_max} (scale factor: {scale_factor:.2f})")
+                return normalized
+            else:
+                # Just return the values if they don't need normalization
+                return values
+        
+        # Plot CT players - Blue line
+        if ct_alive_idx is not None:
+            ct_values = valid_features[:, ct_alive_idx]
+            ct_normalized = normalize_player_count(ct_values)
+            axes[1].plot(ct_normalized, "b-", label="CT Players", linewidth=2.0)
+            
+            print(f"CT alive original values (first 5): {ct_values[:5]}")
+            print(f"CT alive normalized values (first 5): {ct_normalized[:5]}")
+        else:
+            # If CT data not found, show a placeholder with zeros
+            axes[1].plot([0] * valid_len, "b--", label="CT Players (missing)", linewidth=2.0)
+        
+        # Plot T players - Red line with higher z-order to ensure visibility
+        if t_alive_idx is not None:
+            t_values = valid_features[:, t_alive_idx]
+            t_normalized = normalize_player_count(t_values)
+            axes[1].plot(t_normalized, "r-", label="T Players", linewidth=2.0, zorder=10)
+            
+            print(f"T alive original values (first 5): {t_values[:5]}")
+            print(f"T alive normalized values (first 5): {t_normalized[:5]}")
+        else:
+            # If T data not found, show a placeholder with zeros
+            axes[1].plot([0] * valid_len, "r--", label="T Players (missing)", linewidth=2.0, zorder=10)
+        
         axes[1].legend()
         axes[1].grid(True)
 
         # Plot equipment values
-        if len(feature_cols) > 0:
-            ct_eq_col = next((i for i, col in enumerate(feature_cols) if "cteqval" in col.lower()), None)
-            t_eq_col = next((i for i, col in enumerate(feature_cols) if "teqval" in col.lower()), None)
-
-            if ct_eq_col is not None and t_eq_col is not None:
-                axes[2].plot(valid_features[:, ct_eq_col], "b-", label="CT Equipment")
-                axes[2].plot(valid_features[:, t_eq_col], "r-", label="T Equipment")
-                axes[2].set_ylabel("Equipment Value")
-                axes[2].set_xlabel("Frame")
-                axes[2].legend()
-                axes[2].grid(True)
+        if len(equipment_indices) > 0:
+            # Get the column names for each equipment_index
+            equipment_cols = [feature_cols[idx] for idx in equipment_indices]
+            
+            ct_eq_idx = None
+            t_eq_idx = None
+            
+            # Properly identify equipment values by column name
+            for i, col_name in enumerate(equipment_cols):
+                if "cteqval" in col_name.lower():
+                    ct_eq_idx = equipment_indices[i]
+                elif "teqval" in col_name.lower():
+                    t_eq_idx = equipment_indices[i]
+            
+            # Always show equipment values, even if missing
+            axes[2].set_ylabel("Equipment Value")
+            axes[2].set_xlabel("Frame")
+            
+            # Plot CT equipment
+            if ct_eq_idx is not None:
+                axes[2].plot(valid_features[:, ct_eq_idx], "b-", label="CT Equipment")
+            else:
+                # If CT equipment data not found, show a placeholder
+                axes[2].plot([0] * valid_len, "b--", label="CT Equipment (missing)")
+                
+            # Plot T equipment
+            if t_eq_idx is not None:
+                axes[2].plot(valid_features[:, t_eq_idx], "r-", label="T Equipment") 
+            else:
+                # If T equipment data not found, show a placeholder
+                axes[2].plot([0] * valid_len, "r--", label="T Equipment (missing)")
+                
+            axes[2].legend()
+            axes[2].grid(True)
 
         plt.tight_layout()
         plt.savefig(os.path.join(output_dir, f"match_{match_id}_round_{round_idx}.png"))
@@ -597,7 +680,7 @@ def train_responsive_model(
     # Create visualizations
     print("Creating visualizations...")
     viz_dir = model_save_dir / "visualizations"
-    visualize_predictions(test_predictions, viz_dir, feature_cols, player_count_indices, max_viz=20)
+    visualize_predictions(test_predictions, viz_dir, feature_cols, player_count_indices, equipment_indices, max_viz=20)
 
     # Save training history and metrics
     results = {

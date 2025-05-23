@@ -117,21 +117,19 @@ class CSGORoundDataset(Dataset):
         # Extract features
         features = torch.tensor(round_df[self.feature_cols].values, dtype=torch.float32)
 
-        # Create labels: 1 if team1 (CT) wins, 0 if team2 (T) wins
+        # Create labels: 1 if T side wins, 0 if CT side wins
         # Note: We replicate the label for each frame in the round
         # The CSV has 'CT' or 'T' in the winner_col
         winner = round_df.iloc[0][self.winner_col]
-        team1 = round_df.iloc[0][self.team1_col]
-        team2 = round_df.iloc[0][self.team2_col]
-
-        # We need to figure out which team is team1 and which is team2
-        # In the dataset, we have 'CT' and 'T' as winners, but we need to map this to our teams
-        if winner == "CT":
-            # CT team won
-            label = 1.0 if team1 == round_df.iloc[0][self.team1_col] else 0.0
+        
+        # Directly map the winner to a label: T win = 1, CT win = 0
+        # This makes the prediction consistent regardless of team names
+        if winner == "T":
+            # T team won - label is 1
+            label = 1.0
         else:
-            # T team won
-            label = 1.0 if team1 == round_df.iloc[0][self.team2_col] else 0.0
+            # CT team won - label is 0
+            label = 0.0
 
         # Replicate the label for each frame in the round
         labels = torch.full((len(round_df),), label, dtype=torch.float32)

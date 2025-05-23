@@ -64,6 +64,6 @@ class MBMLData:
 
 
 if __name__ == "__main__":
-    data = MBMLData("data/lan/0013db25-4444-452b-980b-7702dc6fb810.json.xz")
+    data = MBMLData("data/lan/03e1f233-579c-462d-ac0e-1635d4718ef8.json.xz")
 
     print(data)

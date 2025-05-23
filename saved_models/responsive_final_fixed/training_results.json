@@ -1,0 +1,69 @@
+{
+    "training_history": {
+        "train_loss": [
+            0.679673829855413,
+            0.635843183820963
+        ],
+        "val_loss": [
+            0.6509524583816528,
+            0.6190417408943176
+        ],
+        "learning_rate": [
+            0.001,
+            0.001
+        ]
+    },
+    "best_val_loss": 0.6190417408943176,
+    "test_metrics": {
+        "accuracy": 0.6635646224021912,
+        "auc": 0.8360191794649939,
+        "precision": 0.4809612983770287,
+        "recall": 1.0,
+        "f1": 0.6495258166491044
+    },
+    "responsiveness": {
+        "avg_pred_change_on_events": 0.02742510847747326,
+        "avg_pred_change_on_nonevents": 0.001068311627022922,
+        "change_ratio": 25.671449661254883,
+        "correlation": 0.6375995587868132,
+        "p_value": 0.0
+    },
+    "training_time": 1.6174488067626953,
+    "model_params": {
+        "model_type": "ResponsiveWinPredictor",
+        "input_dim": 12,
+        "hidden_dim": 64,
+        "num_layers": 2,
+        "dropout": 0.2,
+        "player_count_indices": [
+            10,
+            11
+        ],
+        "equipment_indices": [
+            0,
+            1
+        ]
+    },
+    "training_params": {
+        "batch_size": 32,
+        "num_epochs": 2,
+        "learning_rate": 0.001,
+        "weight_decay": 1e-05,
+        "patience": 10,
+        "event_weight": 3.0
+    },
+    "feature_cols": [
+        "ctEqVal",
+        "tEqVal",
+        "ctSpend",
+        "tSpend",
+        "team1_score",
+        "team2_score",
+        "tick",
+        "seconds",
+        "num_util_ct",
+        "num_util_t",
+        "num_ct_alive",
+        "num_t_alive"
+    ]
+}
