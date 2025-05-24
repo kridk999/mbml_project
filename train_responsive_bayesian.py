@@ -30,6 +30,31 @@ DEFAULT_FEATURE_COLS = [
     "bombPlanted", "ctWon", "tWon"
 ]
 
+def debug_parameter_distributions():
+    """Debug function to inspect parameter distributions."""
+    print("\n" + "="*50)
+    print("PARAMETER STORE DEBUGGING")
+    print("="*50)
+    
+    param_store = pyro.get_param_store()
+    
+    for name, param in param_store.items():
+        if isinstance(param, torch.Tensor):
+            print(f"\nParameter: {name}")
+            print(f"  Shape: {param.shape}")
+            print(f"  Mean: {param.mean().item():.4f}")
+            print(f"  Std: {param.std().item():.4f}")
+            print(f"  Min: {param.min().item():.4f}")
+            print(f"  Max: {param.max().item():.4f}")
+            
+            # Check for gradients
+            if param.grad is not None:
+                print(f"  Grad norm: {param.grad.norm().item():.4f}")
+    
+    print("\n" + "="*50)
+    
+    # Return the parameter store for interactive debugging
+    return param_store
 
 def process_features(dataframe, feature_cols=None):
     """Extract features and identify special feature indices."""

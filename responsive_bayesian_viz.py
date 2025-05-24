@@ -324,11 +324,6 @@ def visualize_match_round(match_id, round_idx, csv_path, model_path, output_dir,
     axes[2].legend()
     axes[2].grid(True)
     
-    # Add subtitle highlighting responsive nature
-    plt.figtext(0.5, 0.01, 
-               "Responsive Bayesian LSTM: Combines uncertainty quantification with event responsiveness.\n"
-               "Notice how the prediction changes when player counts change, unlike the basic Bayesian model.",
-               ha="center", fontsize=10, bbox=dict(facecolor="whitesmoke", alpha=0.8, pad=5))
     
     # Save the figure
     output_path = os.path.join(output_dir, f"responsive_bayesian_match_{match_id}_round_{round_idx}.png")
@@ -348,7 +343,7 @@ if __name__ == "__main__":
     parser.add_argument("--csv_path", type=str, default="round_frame_data1.csv", help="Path to CSV data file")
     parser.add_argument("--model_path", type=str, default="./saved_models/responsive_bayesian/best_model.pt", 
                         help="Path to model weights")
-    parser.add_argument("--output_dir", type=str, default="./saved_models/responsive_bayesian", 
+    parser.add_argument("--output_dir", type=str, default="./saved_models/visualizations/responsive_bayesian", 
                         help="Output directory for visualizations")
     parser.add_argument("--num_samples", type=int, default=30, 
                         help="Number of MC samples for uncertainty estimation")
